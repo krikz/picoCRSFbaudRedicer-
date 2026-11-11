@@ -14,9 +14,9 @@ Crossfire/ExpressLRS (400 кбод) → Pico → полётник (200 кбод)
   и документации EdgeTX. Не из памяти.
 - **CRC-8/DVB-S2**: poly 0xD5, init 0x00, refin/refout false, xorout 0x00,
   check для `"123456789"` = **0xBC** (полином 0xD5 — это не check-значение).
-- **Логика моста не зависит от железа** (`firmware/src/crsf_baud_bridge.c`) —
-  только C99, чтобы её можно было тестировать нативно. Всё, что связано с
-  UART, живёт в `main.cpp`.
+- **Логика моста не зависит от железа** (`firmware/src/crsf_baud_bridge.c`,
+  `firmware/src/crsf_baud_cli.c`) — только C99, чтобы её можно было тестировать
+  нативно. Всё, что связано с UART, живёт в `main.cpp`.
 - **Никаких ключей и токенов** в репозитории.
 - **Стиль** — по GOODWORKRINKZ/biba: PlatformIO с env'ами по таргетам,
   `G-`-наименование CI, нативные тесты без железа, README по-русски.

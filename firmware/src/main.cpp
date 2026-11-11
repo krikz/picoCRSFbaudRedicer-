@@ -17,6 +17,7 @@
 #include "target_config.h"      /* настройки таргета (подключается первым) */
 #include "crsf_baud_config.h"   /* общий конфиг с умолчаниями */
 #include "crsf_baud_bridge.h"
+#include "crsf_baud_cli.h"
 #include "crsf.h"
 
 /* В ядре earlephilhower Serial1/Serial2 — это SerialUART (HW UART). Базовый
@@ -40,8 +41,11 @@ static SerialUART &s_out = Serial2;
 
 static crsf_bridge_slot_t g_slots[CRSF_BAUD_QUEUE_SLOTS];
 static crsf_bridge_t g_bridge;
+static crsf_cli_t g_cli;
 static uint32_t g_logged_frames = 0u;
 static uint32_t g_last_rx_ms = 0u;
+static uint32_t g_baud_in = CRSF_BAUD_IN;
+static uint32_t g_baud_out = CRSF_BAUD_OUT;
 
 static void print_stats(const char *tag)
 {
@@ -70,6 +74,8 @@ void setup()
 #endif
 
     crsf_bridge_init(&g_bridge, g_slots, (uint8_t)CRSF_BAUD_QUEUE_SLOTS);
+    crsf_bridge_set_coalesce(&g_bridge, (uint8_t)(CRSF_BAUD_COALESCE ? 1 : 0));
+    crsf_cli_init(&g_cli);
 
     /* Пины: setPinout(tx, rx) — порядок именно такой. */
     if (!s_in.setPinout(CRSF_BAUD_IN_TX_PIN, CRSF_BAUD_IN_RX_PIN)) {
@@ -88,8 +94,75 @@ void setup()
     Serial.println("ждём CRSF от приёмника...");
 }
 
+static void print_help(void)
+{
+    Serial.println("команды: help | status | stats | baud_in <n> | baud_out <n>");
+    Serial.println("  baud_in/baud_out меняют скорость на лету (n = бод, например 420000)");
+}
+
+static void apply_baud_in(uint32_t baud)
+{
+    s_in.end();
+    s_in.setPinout(CRSF_BAUD_IN_TX_PIN, CRSF_BAUD_IN_RX_PIN);
+    s_in.begin(baud);
+    g_baud_in = baud;
+}
+
+static void apply_baud_out(uint32_t baud)
+{
+    s_out.end();
+    s_out.setPinout(CRSF_BAUD_OUT_TX_PIN, CRSF_BAUD_OUT_RX_PIN);
+    s_out.begin(baud);
+    g_baud_out = baud;
+}
+
+static void handle_command(const crsf_cli_result_t &res)
+{
+    switch (res.cmd) {
+        case CRSF_CLI_HELP:
+            print_help();
+            break;
+        case CRSF_CLI_STATUS:
+            Serial.printf("статус: in=%lu бод (UART%u), out=%lu бод (UART%u), слотов=%u, прореживание=%u\n",
+                          (unsigned long)g_baud_in, (unsigned)CRSF_BAUD_IN_UART,
+                          (unsigned long)g_baud_out, (unsigned)CRSF_BAUD_OUT_UART,
+                          (unsigned)CRSF_BAUD_QUEUE_SLOTS, (unsigned)CRSF_BAUD_COALESCE);
+            break;
+        case CRSF_CLI_STATS:
+            print_stats("stats:");
+            break;
+        case CRSF_CLI_SET_BAUD_IN:
+            apply_baud_in(res.value);
+            Serial.printf("входная скорость: %lu бод\n", (unsigned long)g_baud_in);
+            break;
+        case CRSF_CLI_SET_BAUD_OUT:
+            apply_baud_out(res.value);
+            Serial.printf("выходная скорость: %lu бод\n", (unsigned long)g_baud_out);
+            break;
+        case CRSF_CLI_UNKNOWN:
+            Serial.println("не понял команду (help — список)");
+            break;
+        default:
+            break;
+    }
+}
+
+/* Команды с USB-консоли. */
+static void service_console(void)
+{
+    while (Serial.available() > 0) {
+        const char c = (char)Serial.read();
+        crsf_cli_result_t res;
+        if (crsf_cli_feed(&g_cli, c, &res)) {
+            handle_command(res);
+        }
+    }
+}
+
 void loop()
 {
+    service_console();
+
     /* 1. Забираем байты от приёмника и скормим их мосту. */
     uint8_t chunk[CRSF_BAUD_RX_CHUNK];
     int received = 0;
