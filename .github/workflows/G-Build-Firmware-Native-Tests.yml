@@ -1,0 +1,27 @@
+name: G-Build-Firmware-Native-Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  native-tests:
+    name: native tests (gcc, без PlatformIO)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Собрать нативные тесты
+        working-directory: firmware
+        run: |
+          gcc -std=gnu11 -Wall -Wextra -Wpedantic -Werror \
+              -DCRSF_BAUD_TEST_STANDALONE \
+              -Iinclude -Isrc -Itest/test_support \
+              test/test_crsf_baud_bridge/test_main.c \
+              src/crsf_baud_bridge.c src/crsf.c \
+              -o /tmp/crsf_baud_test
+
+      - name: Прогнать нативные тесты
+        run: /tmp/crsf_baud_test

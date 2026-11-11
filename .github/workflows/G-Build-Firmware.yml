@@ -1,0 +1,38 @@
+name: G-Build-Firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: сборка прошивки (RP2040 / Pico)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Установить PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Кэш PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Собрать прошивку
+        run: pio run -d firmware -e rp2040_crsf_baud_reducer
+
+      - name: Сохранить артефакт
+        uses: actions/upload-artifact@v4
+        with:
+          name: picoCRSFbaudReducer-uf2
+          path: |
+            firmware/.pio/build/rp2040_crsf_baud_reducer/firmware.uf2
+            firmware/.pio/build/rp2040_crsf_baud_reducer/firmware.elf
