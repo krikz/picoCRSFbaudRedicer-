@@ -60,10 +60,10 @@ static void test_set_baud_out(void)
     crsf_cli_result_t res;
     bool got = false;
     crsf_cli_init(&cli);
-    feed_str(&cli, "baud_out 200000\n", &res, &got);
+    feed_str(&cli, "baud_out 230400\n", &res, &got);
     TEST_ASSERT_TRUE(got);
     TEST_ASSERT_EQUAL_INT(CRSF_CLI_SET_BAUD_OUT, res.cmd);
-    TEST_ASSERT_EQUAL_UINT(200000u, res.value);
+    TEST_ASSERT_EQUAL_UINT(230400u, res.value);
 }
 
 static void test_case_insensitive_and_spaces(void)

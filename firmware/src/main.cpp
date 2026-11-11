@@ -47,6 +47,47 @@ static uint32_t g_last_rx_ms = 0u;
 static uint32_t g_baud_in = CRSF_BAUD_IN;
 static uint32_t g_baud_out = CRSF_BAUD_OUT;
 
+/* Реальная скорость, на которой UART работает: делитель у RP2040 дробный,
+ * поэтому «заказанная» и «фактическая» скорости могут чуть отличаться.
+ * Печатаем обе — и предупреждаем, если расхождение заметное.
+ *
+ * getActualBaud() есть не во всех ревизиях ядра Arduino-Pico, поэтому ищем
+ * метод через SFINAE: если его нет — сообщаем, что фактическая скорость
+ * неизвестна, и ограничиваемся запрошенной. */
+template <typename T>
+static auto actual_baud_of(T &ser, int) -> decltype(ser.getActualBaud())
+{
+    return ser.getActualBaud();   /* метод есть в этой ревизии ядра */
+}
+
+template <typename T>
+static int actual_baud_of(T &, long)
+{
+    return -1;   /* метода нет в этой ревизии ядра */
+}
+
+static void print_baud_pair(const char *tag, uint32_t wanted, int actual)
+{
+    if (actual < 0) {
+        Serial.printf("%s: запрошено %lu бод (фактическая скорость в этой ревизии ядра недоступна)\n",
+                      tag, (unsigned long)wanted);
+        return;
+    }
+    if (actual == 0) {
+        Serial.printf("%s: запрошено %lu бод, UART не запущен\n", tag, (unsigned long)wanted);
+        return;
+    }
+    const uint32_t diff = (wanted > (uint32_t)actual) ? (wanted - (uint32_t)actual)
+                                                      : ((uint32_t)actual - wanted);
+    const uint32_t permille = (diff * 1000u) / (wanted ? wanted : 1u);
+    Serial.printf("%s: запрошено %lu бод, фактически %d бод (расхождение %u.%u %%)\n",
+                  tag, (unsigned long)wanted, actual, (unsigned)(permille / 10u),
+                  (unsigned)(permille % 10u));
+    if (permille > 30u) {
+        Serial.printf("  ВНИМАНИЕ: %s: расхождение больше 3 %% — приёмник не удержит кадр\n", tag);
+    }
+}
+
 static void print_stats(const char *tag)
 {
     const crsf_bridge_stats_t *st = crsf_bridge_stats(&g_bridge);
@@ -88,10 +129,13 @@ void setup()
     s_out.begin(CRSF_BAUD_OUT);
 
     Serial.printf("picoCRSFbaudRedicer: in=%lu бод (UART%u), out=%lu бод (UART%u), слотов=%u\n",
-                  (unsigned long)CRSF_BAUD_IN, (unsigned)CRSF_BAUD_IN_UART,
-                  (unsigned long)CRSF_BAUD_OUT, (unsigned)CRSF_BAUD_OUT_UART,
+                  (unsigned long)g_baud_in, (unsigned)CRSF_BAUD_IN_UART,
+                  (unsigned long)g_baud_out, (unsigned)CRSF_BAUD_OUT_UART,
                   (unsigned)CRSF_BAUD_QUEUE_SLOTS);
+    print_baud_pair("вход", g_baud_in, actual_baud_of(s_in, 0));
+    print_baud_pair("выход", g_baud_out, actual_baud_of(s_out, 0));
     Serial.println("ждём CRSF от приёмника...");
+    Serial.println("подсказка: скорость на выходе должна ТОЧНО совпадать с настройкой полётника");
 }
 
 static void print_help(void)
@@ -127,6 +171,8 @@ static void handle_command(const crsf_cli_result_t &res)
                           (unsigned long)g_baud_in, (unsigned)CRSF_BAUD_IN_UART,
                           (unsigned long)g_baud_out, (unsigned)CRSF_BAUD_OUT_UART,
                           (unsigned)CRSF_BAUD_QUEUE_SLOTS, (unsigned)CRSF_BAUD_COALESCE);
+            print_baud_pair("вход", g_baud_in, actual_baud_of(s_in, 0));
+            print_baud_pair("выход", g_baud_out, actual_baud_of(s_out, 0));
             break;
         case CRSF_CLI_STATS:
             print_stats("stats:");
@@ -134,10 +180,13 @@ static void handle_command(const crsf_cli_result_t &res)
         case CRSF_CLI_SET_BAUD_IN:
             apply_baud_in(res.value);
             Serial.printf("входная скорость: %lu бод\n", (unsigned long)g_baud_in);
+            print_baud_pair("вход", g_baud_in, actual_baud_of(s_in, 0));
             break;
         case CRSF_CLI_SET_BAUD_OUT:
             apply_baud_out(res.value);
             Serial.printf("выходная скорость: %lu бод\n", (unsigned long)g_baud_out);
+            print_baud_pair("выход", g_baud_out, actual_baud_of(s_out, 0));
+            Serial.println("проверь, что полётник настроен ровно на эту скорость");
             break;
         case CRSF_CLI_UNKNOWN:
             Serial.println("не понял команду (help — список)");
