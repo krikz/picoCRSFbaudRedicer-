@@ -8,6 +8,9 @@
  *
  * Схема работы:
  *   приёмник Crossfire/ELRS --(CRSF, CRSF_BAUD_IN)--> [Pico] --> (CRSF, CRSF_BAUD_OUT) --> полётник
+ *
+ * Скорость на выходе ниже скорости на входе — это нормально: CRSF идёт
+ * короткими пачками, и частота кадров от этого не меняется.
  */
 
 /* --- Скорости UART (бод) ---------------------------------------------- */
@@ -24,19 +27,32 @@
 
 /* --- UART -------------------------------------------------------------- */
 /* 1 = Serial1 (UART0: GP0 TX / GP1 RX), 2 = Serial2 (UART1: GP4 TX / GP5 RX). */
-#ifndef CRSF_BAUD_RX_UART
-#  define CRSF_BAUD_RX_UART             2
+#ifndef CRSF_BAUD_IN_UART
+#  define CRSF_BAUD_IN_UART             2
 #endif
-#ifndef CRSF_BAUD_TX_UART
-#  define CRSF_BAUD_TX_UART             1
+#ifndef CRSF_BAUD_OUT_UART
+#  define CRSF_BAUD_OUT_UART            1
 #endif
-/* Пины приёма/передачи: -1 = штатные пины выбранного UART. */
-#ifndef CRSF_BAUD_RX_PIN
-#  define CRSF_BAUD_RX_PIN             (-1)
+#if CRSF_BAUD_IN_UART == CRSF_BAUD_OUT_UART
+#  error "CRSF_BAUD_IN_UART и CRSF_BAUD_OUT_UART должны быть разными"
 #endif
-#ifndef CRSF_BAUD_TX_PIN
-#  define CRSF_BAUD_TX_PIN             (-1)
+
+/* --- Пины (RP2040 / Pico) -------------------------------------------- */
+/* IN:  приём CRSF от приёмника (RX) и необязательный TX обратно в приёмник.
+ * OUT: передача CRSF в полётник (TX) и необязательный RX от полётника. */
+#ifndef CRSF_BAUD_IN_RX_PIN
+#  define CRSF_BAUD_IN_RX_PIN            5   /* GP5 */
 #endif
+#ifndef CRSF_BAUD_IN_TX_PIN
+#  define CRSF_BAUD_IN_TX_PIN            4   /* GP4 */
+#endif
+#ifndef CRSF_BAUD_OUT_TX_PIN
+#  define CRSF_BAUD_OUT_TX_PIN           0   /* GP0 */
+#endif
+#ifndef CRSF_BAUD_OUT_RX_PIN
+#  define CRSF_BAUD_OUT_RX_PIN           1   /* GP1 */
+#endif
+
 /* Обратный канал (телеметрия полётника → приёмнику). По умолчанию выключен:
  * базовая схема «приёмник → полётник» односторонняя. */
 #ifndef CRSF_BAUD_ECHO_ENABLE
@@ -47,6 +63,12 @@
 /* Очередь целых CRSF-кадров. Слот = 64 байта (максимальная длина кадра в CRSF). */
 #ifndef CRSF_BAUD_QUEUE_SLOTS
 #  define CRSF_BAUD_QUEUE_SLOTS         32u
+#endif
+/* Таймаут неполного кадра (мс). CRSF-кадры идут пачками с интервалом ~10 мс,
+ * поэтому 20 мс — с запасом. По истечении таймаута незавершённый кадр
+ * отбрасывается (иначе ложный sync-байт в шуме блокировал бы линию). */
+#ifndef CRSF_BAUD_FRAME_TIMEOUT_MS
+#  define CRSF_BAUD_FRAME_TIMEOUT_MS     20u
 #endif
 /* Сколько байт забирать из приёмника за один проход loop(). */
 #ifndef CRSF_BAUD_RX_CHUNK

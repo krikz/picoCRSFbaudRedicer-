@@ -39,11 +39,12 @@ typedef struct {
 typedef struct {
     crsf_bridge_slot_t *slots;
     uint8_t             slot_count;
-    uint8_t             head;     /* индекс следующей записи */
+    uint8_t             head;     /* индекс самого старого кадра */
+    uint8_t             tail;     /* индекс слота следующей записи */
     uint8_t             count;    /* занятых слотов */
-    uint8_t             asm_len;  /* сколько байт уже накоплено в asm */
-    uint8_t             asm[CRSF_BRIDGE_MAX_FRAME];
-    uint8_t             asm_crc;  /* CRC8 накопленного кадра */
+    uint8_t             accum_len;  /* сколько байт уже накоплено в accum */
+    uint8_t             accum[CRSF_BRIDGE_MAX_FRAME];
+    uint8_t             accum_crc;  /* CRC8 накопленного кадра */
     crsf_bridge_stats_t stats;
 } crsf_bridge_t;
 
@@ -52,6 +53,12 @@ void crsf_bridge_init(crsf_bridge_t *bridge, crsf_bridge_slot_t *slots, uint8_t 
 
 /* Скормить байты со входа. Кадры собираются, проверяются и кладутся в очередь. */
 void crsf_bridge_feed(crsf_bridge_t *bridge, const uint8_t *data, size_t len);
+
+/* Таймаут неполного кадра: вызывается хостом, если входящих байт не было
+ * дольше CRSF_BAUD_FRAME_TIMEOUT_MS. Незавершённый кадр отбрасывается, но
+ * хвост от последнего sync-байта сохраняется: настоящий кадр мог начаться
+ * внутри ложного (шум в линии). */
+void crsf_bridge_expire(crsf_bridge_t *bridge);
 
 /* Забрать очередной готовый кадр. false — очередь пуста. */
 bool crsf_bridge_pop(crsf_bridge_t *bridge, uint8_t *out, uint8_t *out_len);
