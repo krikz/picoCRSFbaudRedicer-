@@ -26,7 +26,8 @@
 #endif
 
 /* --- UART -------------------------------------------------------------- */
-/* 1 = Serial1 (UART0: GP0 TX / GP1 RX), 2 = Serial2 (UART1: GP4 TX / GP5 RX). */
+/* 1 = Serial1 (UART0), 2 = Serial2 (UART1). Конкретные пины — ниже;
+ * GP0/GP1 на Pico заняты USB, поэтому по умолчанию CRSF идёт по GP4/GP5 и GP8/GP9. */
 #ifndef CRSF_BAUD_IN_UART
 #  define CRSF_BAUD_IN_UART             2
 #endif
@@ -40,17 +41,20 @@
 /* --- Пины (RP2040 / Pico) -------------------------------------------- */
 /* IN:  приём CRSF от приёмника (RX) и необязательный TX обратно в приёмник.
  * OUT: передача CRSF в полётник (TX) и необязательный RX от полётника. */
+/* Распиновка по умолчанию. GP0/GP1 на Pico заняты USB (D+/D-) — там же по
+ * умолчанию сидит Serial1 в варианте rpipico этого ядра, поэтому линии CRSF
+ * уводим на GP4/GP5 и GP8/GP9. */
 #ifndef CRSF_BAUD_IN_RX_PIN
-#  define CRSF_BAUD_IN_RX_PIN            5   /* GP5 */
+#  define CRSF_BAUD_IN_RX_PIN            9   /* GP9 — приём CRSF от приёмника */
 #endif
 #ifndef CRSF_BAUD_IN_TX_PIN
-#  define CRSF_BAUD_IN_TX_PIN            4   /* GP4 */
+#  define CRSF_BAUD_IN_TX_PIN            8   /* GP8 */
 #endif
 #ifndef CRSF_BAUD_OUT_TX_PIN
-#  define CRSF_BAUD_OUT_TX_PIN           0   /* GP0 */
+#  define CRSF_BAUD_OUT_TX_PIN           4   /* GP4 — передача CRSF в полётник */
 #endif
 #ifndef CRSF_BAUD_OUT_RX_PIN
-#  define CRSF_BAUD_OUT_RX_PIN           1   /* GP1 */
+#  define CRSF_BAUD_OUT_RX_PIN           5   /* GP5 */
 #endif
 
 /* Обратный канал (телеметрия полётника → приёмнику). По умолчанию выключен:

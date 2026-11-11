@@ -5,8 +5,8 @@
  * Содержимое кадров не меняется: мост собирает кадры, проверяет CRC и отдаёт
  * их целыми. Меняется только скорость линии.
  *
- * Прошивка Arduino-Pico: Serial = USB CDC (логи), Serial1 = UART0 (GP0/GP1),
- * Serial2 = UART1 (GP4/GP5).
+ * Прошивка Arduino-Pico: Serial = USB CDC (логи), Serial1 = UART0 (GP4/GP5 по
+ * умолчанию этого проекта), Serial2 = UART1 (GP8/GP9).
  *
  * Файл намеренно .cpp: Arduino-Pico объявляет Serial/Serial1/Serial2 как
  * C++-объекты, и в .c-файле заголовок Arduino.h теряет их объявления.
@@ -19,18 +19,21 @@
 #include "crsf_baud_bridge.h"
 #include "crsf.h"
 
+/* В ядре earlephilhower Serial1/Serial2 — это SerialUART (HW UART). Базовый
+ * HardwareSerial умеет только begin(baud): пины задаются через
+ * setPinout(tx, rx) — именно в таком порядке — и до begin(). */
 #if CRSF_BAUD_IN_UART == 1
-static HardwareSerial &s_in = Serial1;
+static SerialUART &s_in = Serial1;
 #elif CRSF_BAUD_IN_UART == 2
-static HardwareSerial &s_in = Serial2;
+static SerialUART &s_in = Serial2;
 #else
 #  error "CRSF_BAUD_IN_UART должен быть 1 (Serial1/UART0) или 2 (Serial2/UART1)"
 #endif
 
 #if CRSF_BAUD_OUT_UART == 1
-static HardwareSerial &s_out = Serial1;
+static SerialUART &s_out = Serial1;
 #elif CRSF_BAUD_OUT_UART == 2
-static HardwareSerial &s_out = Serial2;
+static SerialUART &s_out = Serial2;
 #else
 #  error "CRSF_BAUD_OUT_UART должен быть 1 (Serial1/UART0) или 2 (Serial2/UART1)"
 #endif
@@ -68,8 +71,15 @@ void setup()
 
     crsf_bridge_init(&g_bridge, g_slots, (uint8_t)CRSF_BAUD_QUEUE_SLOTS);
 
-    s_in.begin(CRSF_BAUD_IN, CRSF_BAUD_IN_RX_PIN, CRSF_BAUD_IN_TX_PIN);
-    s_out.begin(CRSF_BAUD_OUT, CRSF_BAUD_OUT_TX_PIN, CRSF_BAUD_OUT_RX_PIN);
+    /* Пины: setPinout(tx, rx) — порядок именно такой. */
+    if (!s_in.setPinout(CRSF_BAUD_IN_TX_PIN, CRSF_BAUD_IN_RX_PIN)) {
+        Serial.println("ВНИМАНИЕ: не удалось назначить пины входного UART");
+    }
+    if (!s_out.setPinout(CRSF_BAUD_OUT_TX_PIN, CRSF_BAUD_OUT_RX_PIN)) {
+        Serial.println("ВНИМАНИЕ: не удалось назначить пины выходного UART");
+    }
+    s_in.begin(CRSF_BAUD_IN);
+    s_out.begin(CRSF_BAUD_OUT);
 
     Serial.printf("picoCRSFbaudRedicer: in=%lu бод (UART%u), out=%lu бод (UART%u), слотов=%u\n",
                   (unsigned long)CRSF_BAUD_IN, (unsigned)CRSF_BAUD_IN_UART,

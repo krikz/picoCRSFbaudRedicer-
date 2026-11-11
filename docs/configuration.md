@@ -34,10 +34,10 @@ build_flags =
 | --- | --- | --- |
 | `CRSF_BAUD_IN_UART` | `2` | UART на входе: 1 = Serial1 (UART0), 2 = Serial2 (UART1) |
 | `CRSF_BAUD_OUT_UART` | `1` | UART на выходе |
-| `CRSF_BAUD_IN_RX_PIN` | `5` | GP5 — приём CRSF от приёмника |
-| `CRSF_BAUD_IN_TX_PIN` | `4` | GP4 — передача в приёмник (обратный канал) |
-| `CRSF_BAUD_OUT_TX_PIN` | `0` | GP0 — передача CRSF в полётник |
-| `CRSF_BAUD_OUT_RX_PIN` | `1` | GP1 — приём CRSF от полётника (обратный канал) |
+| `CRSF_BAUD_IN_RX_PIN` | `9` | GP9 — приём CRSF от приёмника |
+| `CRSF_BAUD_IN_TX_PIN` | `8` | GP8 — передача в приёмник (обратный канал) |
+| `CRSF_BAUD_OUT_TX_PIN` | `4` | GP4 — передача CRSF в полётник |
+| `CRSF_BAUD_OUT_RX_PIN` | `5` | GP5 — приём CRSF от полётника (обратный канал) |
 | `CRSF_BAUD_ECHO_ENABLE` | `0` | обратный канал полётник → приёмник |
 
 Два UART должны быть разными — иначе сборка падает с ошибкой.

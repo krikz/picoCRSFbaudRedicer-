@@ -3,9 +3,12 @@
  * Подключается первым (до crsf_baud_config.h), поэтому значения ниже имеют
  * приоритет над общими умолчаниями.
  *
- *   приёмник Crossfire/ELRS  →  GP5 (UART1 RX)
- *   Pico                     →  GP0 (UART0 TX)  →  полётник
- *   полётник                 →  GP1 (UART0 RX)  →  Pico (обратный канал, выключен)
+ *   приёмник Crossfire/ELRS  →  GP9 (UART1 RX)
+ *   Pico                     →  GP4 (UART0 TX)  →  полётник
+ *   полётник                 →  GP5 (UART0 RX)  →  Pico (обратный канал, выключен)
+ *
+ * GP0/GP1 на Pico заняты USB — там по умолчанию сидит Serial1 в варианте
+ * rpipico этого ядра, поэтому линии CRSF уведены на свободные GP4/GP5 и GP8/GP9.
  */
 
 #ifndef CRSF_BAUD_IN
@@ -23,16 +26,16 @@
 #endif
 
 #ifndef CRSF_BAUD_IN_RX_PIN
-#  define CRSF_BAUD_IN_RX_PIN         5         /* GP5 */
+#  define CRSF_BAUD_IN_RX_PIN         9         /* GP9 */
 #endif
 #ifndef CRSF_BAUD_IN_TX_PIN
-#  define CRSF_BAUD_IN_TX_PIN         4         /* GP4 */
+#  define CRSF_BAUD_IN_TX_PIN         8         /* GP8 */
 #endif
 #ifndef CRSF_BAUD_OUT_TX_PIN
-#  define CRSF_BAUD_OUT_TX_PIN        0         /* GP0 */
+#  define CRSF_BAUD_OUT_TX_PIN        4         /* GP4 */
 #endif
 #ifndef CRSF_BAUD_OUT_RX_PIN
-#  define CRSF_BAUD_OUT_RX_PIN        1         /* GP1 */
+#  define CRSF_BAUD_OUT_RX_PIN        5         /* GP5 */
 #endif
 
 #ifndef CRSF_BAUD_ECHO_ENABLE
