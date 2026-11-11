@@ -1,19 +1,19 @@
-# picoCRSFbaudReducer
+# picoCRSFbaudRedicer
 
-[![Native Tests](https://github.com/krikz/picoCRSFbaudReducer-/actions/workflows/G-Build-Firmware-Native-Tests.yml/badge.svg?branch=main)](https://github.com/krikz/picoCRSFbaudReducer-/actions/workflows/G-Build-Firmware-Native-Tests.yml)
-[![Firmware Build](https://github.com/krikz/picoCRSFbaudReducer-/actions/workflows/G-Build-Firmware.yml/badge.svg?branch=main)](https://github.com/krikz/picoCRSFbaudReducer-/actions/workflows/G-Build-Firmware.yml)
+[![Native Tests](https://github.com/krikz/picoCRSFbaudRedicer-/actions/workflows/G-Build-Firmware-Native-Tests.yml/badge.svg?branch=main)](https://github.com/krikz/picoCRSFbaudRedicer-/actions/workflows/G-Build-Firmware-Native-Tests.yml)
+[![Firmware Build](https://github.com/krikz/picoCRSFbaudRedicer-/actions/workflows/G-Build-Firmware.yml/badge.svg?branch=main)](https://github.com/krikz/picoCRSFbaudRedicer-/actions/workflows/G-Build-Firmware.yml)
 
 <p align="center">
    <pre>
    ┌──────────────┐   CRSF, 400 кбод   ┌───────────────┐   CRSF, 200 кбод   ┌──────────────┐
    │  Приёмник   │ ──────────────────► │  RP2040 Pico  │ ──────────────────► │  Полётник    │
-   │ Crossfire / │   UART1 (GP4/GP5)  │  преобразова- │   UART0 (GP0/GP1)  │  (CRSF вход) │
+   │ Crossfire / │   UART1 (GP8/GP9)  │  преобразова- │   UART0 (GP4/GP5)  │  (CRSF вход) │
    │ ExpressLRS  │                     │  тель скорости│                    │              │
    └──────────────┘                     └───────────────┘                    └──────────────┘
    </pre>
 </p>
 
-**picoCRSFbaudReducer** — преобразователь скорости линии CRSF на Raspberry Pi Pico (RP2040).
+**picoCRSFbaudRedicer** — преобразователь скорости линии CRSF на Raspberry Pi Pico (RP2040).
 Он стоит между приёмником Crossfire/ExpressLRS и полётником: читает CRSF на одной скорости,
 проверяет кадры и отдаёт их на другой. Никакой интерпретации протокола — байты кадра
 передаются как есть, меняется только скорость линии.
@@ -43,22 +43,32 @@
 3. **Кладёт целые кадры в очередь** (по умолчанию 32 слота по 64 байта).
 4. **Отдаёт целыми кадрами** на второй UART. Если очередь переполнилась, вытесняется
    **самый старый** кадр (`frames_dropped`): для RC свежая команда важнее запоздалой.
+5. **Не залипает на шуме.** Ложный sync-байт в линии запускает сборку
+   несуществующего кадра; по таймауту (20 мс) кандидат отбрасывается, а хвост от
+   последнего sync-байта сохраняется — настоящий кадр, начавшийся внутри ложного,
+   доходит до полётника. После битого CRC мост ресинхронизируется по следующему
+   sync-байту и следующий кадр не теряет.
 
 Логика моста — портируемый C без железа (`firmware/src/crsf_baud_bridge.c`), она покрыта
-нативными тестами; `main.c` держит только UART и индикацию.
+нативными тестами; `main.cpp` держит только UART и индикацию.
 
 ## Распиновка (Raspberry Pi Pico)
 
 | Назначение | UART | GP | Примечание |
 | --- | --- | --- | --- |
-| CRSF от приёмника (вход) | UART1 RX | **GP5** | TX приёмника сюда |
-| CRSF к полётнику (выход) | UART0 TX | **GP0** | вход CRSF полётника сюда |
-| Обратный канал (опция) | UART0 RX | **GP1** | телеметрия полётника → приёмник, по умолчанию выключено |
-| Обратный канал (опция) | UART1 TX | **GP4** | ответ приёмнику |
+| CRSF от приёмника (вход) | UART1 RX | **GP9** | TX приёмника сюда |
+| CRSF к полётнику (выход) | UART0 TX | **GP4** | вход CRSF полётника сюда |
+| Обратный канал (опция) | UART0 RX | **GP5** | телеметрия полётника → приёмник, по умолчанию выключено |
+| Обратный канал (опция) | UART1 TX | **GP8** | ответ приёмнику |
 | Логи/диагностика | USB CDC | — | `Serial`, 115200 |
 | Светодиод | GPIO | **GP25** | мигает при приёме кадров |
 
-Пины можно переопределить (`CRSF_BAUD_RX_PIN` / `CRSF_BAUD_TX_PIN`).
+Пины можно переопределить (`CRSF_BAUD_IN_RX_PIN` и остальные — см.
+[docs/configuration.md](docs/configuration.md)).
+
+**GP0/GP1 не используются:** на Pico это выводы USB (D+/D−), и в варианте
+`rpipico` ядра Arduino-Pico там по умолчанию сидит `Serial1`. Линии CRSF
+уведены на свободные GP4/GP5 и GP8/GP9.
 
 **Уровни.** CRSF — это 3.3 V ([TBS spec](https://github.com/tbs-fpv/tbs-crsf-spec/blob/main/crsf.md),
 [Betaflight `crsf_protocol.h`](https://github.com/betaflight/betaflight/blob/master/src/main/rx/crsf_protocol.h)):
@@ -80,7 +90,9 @@ pio test -e native_test                        # нативные тесты
 
 ## Проверка без железа
 
-Логика моста собирается обычным gcc и прогоняется нативными тестами:
+Логика моста собирается обычным gcc и прогоняется нативными тестами
+(12 тестов: CRC, round-trip кадра, отбраковка битых, ресинхронизация, таймаут,
+переполнение очереди, счётчики):
 
 ```bash
 cd firmware
@@ -111,6 +123,9 @@ gcc -std=gnu11 -Wall -Wextra -Wpedantic \
   кадры — счётчик `frames_dropped` это покажет.
 - **Только CRSF.** Поток, который не является CRSF (другой sync, другой протокол), не
   пройдёт: мост работает по кадрам, а не по байтам.
+- **Грязь в линии стоит кадров.** Одна «грязная» посылка (глюх, плохой контакт) —
+  это до 20 мс потери кадров (при частоте RC 100 Гц это ~2 кадра, что укладывается
+  в таймаут полётника). Дальше мост сам восстанавливается.
 - **Кадр длиннее 64 байт** отбрасывается (ограничение спецификации CRSF).
 
 ## Источники
