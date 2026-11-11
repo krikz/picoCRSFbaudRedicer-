@@ -12,7 +12,7 @@ firmware/
 ├── src/
 │   ├── crsf.[ch]              CRC8 DVB-S2 и разбор кадра (из biba)
 │   ├── crsf_baud_bridge.c     мост: сборка кадров, проверка CRC, очередь
-│   └── main.c                 UART на Pico, светодиод, логи
+│   └── main.cpp               UART на Pico, светодиод, логи
 ├── targets/
 │   └── RP2040_CRSF_BAUD_REDUCER/
 │       ├── target.h            описание платы

@@ -7,6 +7,9 @@
  *
  * Прошивка Arduino-Pico: Serial = USB CDC (логи), Serial1 = UART0 (GP0/GP1),
  * Serial2 = UART1 (GP4/GP5).
+ *
+ * Файл намеренно .cpp: Arduino-Pico объявляет Serial/Serial1/Serial2 как
+ * C++-объекты, и в .c-файле заголовок Arduino.h теряет их объявления.
  */
 
 #include <Arduino.h>
