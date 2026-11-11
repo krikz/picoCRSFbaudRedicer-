@@ -12,7 +12,7 @@
  */
 
 #ifndef CRSF_BAUD_IN
-#  define CRSF_BAUD_IN               400000UL   /* базовый CRSF; у ELRS — 420000 */
+#  define CRSF_BAUD_IN               420000UL   /* как в biba: BIBA_CRSF_BAUD */
 #endif
 #ifndef CRSF_BAUD_OUT
 #  define CRSF_BAUD_OUT              200000UL   /* скорость, которую ждёт полётник */
@@ -43,7 +43,10 @@
 #endif
 
 #ifndef CRSF_BAUD_QUEUE_SLOTS
-#  define CRSF_BAUD_QUEUE_SLOTS       32u
+#  define CRSF_BAUD_QUEUE_SLOTS       8u
+#endif
+#ifndef CRSF_BAUD_COALESCE
+#  define CRSF_BAUD_COALESCE         1
 #endif
 
 #ifndef CRSF_BAUD_LOG_BAUD

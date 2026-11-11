@@ -262,6 +262,69 @@ static void test_parse_frame_reports_type(void)
     TEST_ASSERT_EQUAL_UINT8(0u, crsf_parse_frame(frame, len));
 }
 
+
+static void test_same_type_frame_replaces_older(void)
+{
+    crsf_bridge_slot_t slots[8];
+    crsf_bridge_t bridge;
+    crsf_bridge_init(&bridge, slots, 8);
+    crsf_bridge_set_coalesce(&bridge, 1u);
+
+    uint8_t payload[2] = {0x10u, 0x20u};
+    uint8_t frame[32];
+    uint8_t len = build_frame(CRSF_FRAMETYPE_RC_CHANNELS, payload, 2u, frame);
+    crsf_bridge_feed(&bridge, frame, len);
+
+    /* Второй кадр того же типа заменяет первый: в очереди остаётся свежий. */
+    payload[0] = 0x33u;
+    len = build_frame(CRSF_FRAMETYPE_RC_CHANNELS, payload, 2u, frame);
+    crsf_bridge_feed(&bridge, frame, len);
+
+    TEST_ASSERT_EQUAL_UINT(1u, crsf_bridge_pending(&bridge));
+    TEST_ASSERT_EQUAL_UINT(1u, crsf_bridge_stats(&bridge)->frames_coalesced);
+
+    uint8_t out[CRSF_BRIDGE_MAX_FRAME];
+    uint8_t out_len = 0;
+    TEST_ASSERT_TRUE(crsf_bridge_pop(&bridge, out, &out_len));
+    TEST_ASSERT_EQUAL_UINT8(CRSF_FRAMETYPE_RC_CHANNELS, out[2]);
+    TEST_ASSERT_EQUAL_UINT8(0x33u, out[3]);   /* свежие данные, не старые */
+}
+
+static void test_coalesce_keeps_other_types(void)
+{
+    crsf_bridge_slot_t slots[8];
+    crsf_bridge_t bridge;
+    crsf_bridge_init(&bridge, slots, 8);
+    crsf_bridge_set_coalesce(&bridge, 1u);
+
+    uint8_t frame[32];
+    uint8_t len = build_frame(CRSF_FRAMETYPE_RC_CHANNELS, NULL, 0u, frame);
+    crsf_bridge_feed(&bridge, frame, len);
+    len = build_frame(CRSF_FRAMETYPE_LINK_STATS, NULL, 0u, frame);
+    crsf_bridge_feed(&bridge, frame, len);
+
+    /* Кадры разных типов не вытесняют друг друга. */
+    TEST_ASSERT_EQUAL_UINT(2u, crsf_bridge_pending(&bridge));
+    TEST_ASSERT_EQUAL_UINT(0u, crsf_bridge_stats(&bridge)->frames_coalesced);
+}
+
+static void test_without_coalesce_both_frames_stay(void)
+{
+    crsf_bridge_slot_t slots[8];
+    crsf_bridge_t bridge;
+    crsf_bridge_init(&bridge, slots, 8);
+    crsf_bridge_set_coalesce(&bridge, 0u);
+
+    uint8_t frame[32];
+    uint8_t len = build_frame(CRSF_FRAMETYPE_RC_CHANNELS, NULL, 0u, frame);
+    crsf_bridge_feed(&bridge, frame, len);
+    len = build_frame(CRSF_FRAMETYPE_RC_CHANNELS, NULL, 0u, frame);
+    crsf_bridge_feed(&bridge, frame, len);
+
+    TEST_ASSERT_EQUAL_UINT(2u, crsf_bridge_pending(&bridge));
+    TEST_ASSERT_EQUAL_UINT(0u, crsf_bridge_stats(&bridge)->frames_coalesced);
+}
+
 static void run_all(void)
 {
     RUN_TEST(test_crc8_known_vector);
@@ -276,6 +339,9 @@ static void run_all(void)
     RUN_TEST(test_overflow_drops_oldest_frame);
     RUN_TEST(test_stats_counters);
     RUN_TEST(test_parse_frame_reports_type);
+    RUN_TEST(test_same_type_frame_replaces_older);
+    RUN_TEST(test_coalesce_keeps_other_types);
+    RUN_TEST(test_without_coalesce_both_frames_stay);
 }
 
 #if defined(CRSF_BAUD_TEST_STANDALONE)

@@ -26,6 +26,7 @@ typedef struct {
     uint32_t frames_ok;        /* принято валидных кадров */
     uint32_t frames_bad;       /* отброшено: битый CRC / длина / мусор */
     uint32_t frames_dropped;   /* вытеснено из очереди (не хватило места) */
+    uint32_t frames_coalesced; /* заменено более свежим кадром того же типа */
     uint32_t bytes_in;         /* всего байт со входа */
     uint32_t bytes_out;        /* всего байт на выход */
     uint32_t queue_high_water; /* максимум одновременно занятых слотов */
@@ -42,6 +43,7 @@ typedef struct {
     uint8_t             head;     /* индекс самого старого кадра */
     uint8_t             tail;     /* индекс слота следующей записи */
     uint8_t             count;    /* занятых слотов */
+    uint8_t             coalesce;   /* 1: кадр того же типа заменяет старый */
     uint8_t             accum_len;  /* сколько байт уже накоплено в accum */
     uint8_t             accum[CRSF_BRIDGE_MAX_FRAME];
     uint8_t             accum_crc;  /* CRC8 накопленного кадра */
@@ -50,6 +52,11 @@ typedef struct {
 
 /* Инициализация: слоты очереди и счётчики. slots должен жить дольше bridge. */
 void crsf_bridge_init(crsf_bridge_t *bridge, crsf_bridge_slot_t *slots, uint8_t slot_count);
+
+/* Прореживание: 1 — новый кадр заменяет в очереди более старый кадр того же
+ * типа (для RC это «оставить только свежую команду»). 0 — вытеснять только
+ * самый старый кадр при переполнении. */
+void crsf_bridge_set_coalesce(crsf_bridge_t *bridge, uint8_t enabled);
 
 /* Скормить байты со входа. Кадры собираются, проверяются и кладутся в очередь. */
 void crsf_bridge_feed(crsf_bridge_t *bridge, const uint8_t *data, size_t len);

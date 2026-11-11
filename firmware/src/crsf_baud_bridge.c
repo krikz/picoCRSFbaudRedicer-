@@ -26,6 +26,22 @@ static void push_frame(crsf_bridge_t *bridge, uint8_t frame_len)
         bridge->stats.frames_ok++;
         return;
     }
+    /* Прореживание: если в очереди уже лежит кадр того же типа, заменяем его
+     * свежим на его же месте. Для RC это «в очереди всегда самая свежая
+     * команда», а кадры других типов (линк-статы, батарея) не теряются. */
+    if (bridge->coalesce != 0u) {
+        const uint8_t type = bridge->accum[2];
+        for (uint8_t i = 0u; i < bridge->count; ++i) {
+            const uint8_t idx = (uint8_t)((bridge->head + i) % bridge->slot_count);
+            if (bridge->slots[idx].data[2] == type) {
+                memcpy(bridge->slots[idx].data, bridge->accum, frame_len);
+                bridge->slots[idx].len = frame_len;
+                bridge->stats.frames_coalesced++;
+                bridge->stats.frames_ok++;
+                return;
+            }
+        }
+    }
     /* Мест нет — вытесняем самый старый кадр: свежая команда важнее запоздалой. */
     if (bridge->count >= bridge->slot_count) {
         bridge->head = (uint8_t)((bridge->head + 1u) % bridge->slot_count);
@@ -85,6 +101,14 @@ void crsf_bridge_init(crsf_bridge_t *bridge, crsf_bridge_slot_t *slots, uint8_t 
     memset(bridge, 0, sizeof(*bridge));
     bridge->slots = slots;
     bridge->slot_count = slot_count;
+}
+
+void crsf_bridge_set_coalesce(crsf_bridge_t *bridge, uint8_t enabled)
+{
+    if (bridge == NULL) {
+        return;
+    }
+    bridge->coalesce = (enabled != 0u) ? 1u : 0u;
 }
 
 void crsf_bridge_feed(crsf_bridge_t *bridge, const uint8_t *data, size_t len)
