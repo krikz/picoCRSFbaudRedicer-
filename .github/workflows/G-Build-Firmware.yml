@@ -29,6 +29,12 @@ jobs:
       - name: Собрать прошивку
         run: pio run -d firmware -e rp2040_crsf_baud_reducer
 
+      - name: Собрать прошивку с обратным каналом (двусторонняя схема)
+        run: |
+          pio run -d firmware -e rp2040_crsf_baud_reducer -t clean
+          PLATFORMIO_BUILD_FLAGS="-DCRSF_BAUD_ECHO_ENABLE=1" \
+            pio run -d firmware -e rp2040_crsf_baud_reducer
+
       - name: Сохранить артефакт
         uses: actions/upload-artifact@v4
         with:

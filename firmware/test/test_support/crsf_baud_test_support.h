@@ -63,7 +63,14 @@ extern const char *crsf_baud_test_current_name;
     if (memcmp((expected), (actual), (len)) != 0) \
         CRSF_BAUD_FAIL("несовпадение памяти на %zu байтах", (size_t)(len)); \
 } while (0)
+#define TEST_ASSERT_EQUAL_STRING_LEN(expected, actual, len) do { \
+    if (memcmp((expected), (actual), (len)) != 0) { \
+        CRSF_BAUD_FAIL("строки не равны: \"%s\" != \"%s\"", (expected), (actual)); \
+    } \
+} while (0)
+
 #define TEST_ASSERT_NOT_NULL(ptr) do { if ((ptr) == NULL) CRSF_BAUD_FAIL("ожидался не-NULL: %s", #ptr); } while (0)
+#define TEST_ASSERT_NULL(ptr) do { if ((ptr) != NULL) CRSF_BAUD_FAIL("ожидался NULL: %s", #ptr); } while (0)
 
 #define CRSF_BAUD_TEST_STANDALONE_MAIN(runner) \
     int crsf_baud_test_failures = 0; \

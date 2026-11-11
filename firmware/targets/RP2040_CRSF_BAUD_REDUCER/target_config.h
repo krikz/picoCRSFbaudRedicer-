@@ -49,6 +49,10 @@
 #  define CRSF_BAUD_COALESCE         1
 #endif
 
+#ifndef CRSF_BAUD_RX_FIFO_SIZE
+#  define CRSF_BAUD_RX_FIFO_SIZE     256u
+#endif
+
 #ifndef CRSF_BAUD_LOG_BAUD
 #  define CRSF_BAUD_LOG_BAUD           115200UL
 #endif
