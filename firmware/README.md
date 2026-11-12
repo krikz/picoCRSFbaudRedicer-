@@ -82,7 +82,7 @@ help | status | stats | baud_in <n> | baud_out <n>
 USB-консоль, 115200 бод:
 
 ```
-picoCRSFbaudRedicer: in=420000 бод (UART2), out=200000 бод (UART1), слотов=8
+picoCRSFbaudRedicer: in=420000 бод (UART2), out=230400 бод (UART1), слотов=8
 ждём CRSF от приёмника...
 crsf: ok=100 bad=0 dropped=0 in=2400 out=2400 q=0/32
 ```

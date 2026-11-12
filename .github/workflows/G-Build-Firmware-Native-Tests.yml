@@ -33,7 +33,18 @@ jobs:
               src/crsf_baud_cli.c \
               -o /tmp/crsf_baud_cli_test
 
+      - name: Собрать нативные тесты очереди лога
+        working-directory: firmware
+        run: |
+          gcc -std=gnu11 -Wall -Wextra -Wpedantic -Werror \
+              -DCRSF_BAUD_TEST_STANDALONE \
+              -Iinclude -Isrc -Itest/test_support \
+              test/test_crsf_baud_log/test_main.c \
+              src/crsf_baud_log.c \
+              -o /tmp/crsf_baud_log_test
+
       - name: Прогнать нативные тесты
         run: |
           /tmp/crsf_baud_test
           /tmp/crsf_baud_cli_test
+          /tmp/crsf_baud_log_test

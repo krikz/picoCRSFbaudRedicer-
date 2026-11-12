@@ -15,7 +15,7 @@
 #  define CRSF_BAUD_IN               420000UL   /* как в biba: BIBA_CRSF_BAUD */
 #endif
 #ifndef CRSF_BAUD_OUT
-#  define CRSF_BAUD_OUT              200000UL   /* скорость, которую ждёт полётник */
+#  define CRSF_BAUD_OUT              230400UL   /* = скорость, выставленная на полётнике */
 #endif
 
 #ifndef CRSF_BAUD_IN_UART
@@ -47,6 +47,10 @@
 #endif
 #ifndef CRSF_BAUD_COALESCE
 #  define CRSF_BAUD_COALESCE         1
+#endif
+
+#ifndef CRSF_BAUD_RX_FIFO_SIZE
+#  define CRSF_BAUD_RX_FIFO_SIZE     256u
 #endif
 
 #ifndef CRSF_BAUD_LOG_BAUD
